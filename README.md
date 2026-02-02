@@ -5,6 +5,7 @@ An AI-powered self-reflection journal app that transforms your daily thoughts in
 ![Flutter](https://img.shields.io/badge/Flutter-3.19+-02569B?style=flat&logo=flutter)
 ![Dart](https://img.shields.io/badge/Dart-3.3+-0175C2?style=flat&logo=dart)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
+![CI](https://github.com/middesurya/EchoMirror/actions/workflows/ci.yml/badge.svg)
 
 ## 🌟 Features
 
@@ -64,9 +65,12 @@ lib/
 ├── main.dart                 # App entry point
 ├── app.dart                  # App configuration
 ├── core/
+│   ├── errors/              # Domain-specific exceptions
+│   ├── logging/             # Structured logging (AppLogger)
 │   ├── router/              # Navigation
 │   ├── services/            # Business logic services
-│   └── theme/               # Material 3 theming
+│   ├── theme/               # Material 3 theming
+│   └── utils/               # Result type, helpers
 ├── features/
 │   ├── home/                # Home screen
 │   ├── reflection/          # Input screens
@@ -77,6 +81,13 @@ lib/
 └── shared/
     └── models/              # Data models
 ```
+
+### Key Patterns
+
+- **Result Type**: Functional error handling inspired by Rust/Kotlin
+- **Structured Logging**: Production-ready logging with severity levels
+- **Domain Exceptions**: Typed exceptions for precise error handling
+- **ADRs**: Documented architectural decisions in `/docs/adr/`
 
 ### Tech Stack
 
