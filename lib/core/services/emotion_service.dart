@@ -1,5 +1,4 @@
-import 'dart:io';
-import 'dart:typed_data';
+import 'dart:ui' show Size;
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;

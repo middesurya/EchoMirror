@@ -245,7 +245,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   spacing: 8,
                   children: ['all', 'happy', 'sad', 'angry', 'anxious', 'neutral']
                       .map((emotion) => FilterChip(
-                            label: Text(emotion == 'all' ? 'All' : emotion.capitalize()),
+                            label: Text(emotion == 'all' ? 'All' : emotion.capitalizeFirst()),
                             selected: _filterEmotion == emotion,
                             onSelected: (selected) {
                               setModalState(() => _filterEmotion = emotion);
@@ -266,7 +266,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   spacing: 8,
                   children: ['all', 'positive', 'negative', 'neutral']
                       .map((sentiment) => FilterChip(
-                            label: Text(sentiment == 'all' ? 'All' : sentiment.capitalize()),
+                            label: Text(sentiment == 'all' ? 'All' : sentiment.capitalizeFirst()),
                             selected: _filterSentiment == sentiment,
                             onSelected: (selected) {
                               setModalState(() => _filterSentiment = sentiment);
@@ -378,8 +378,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 }
 
-extension on String {
-  String capitalize() {
+extension HistoryStringExt on String {
+  String capitalizeFirst() {
     if (isEmpty) return this;
     return '${this[0].toUpperCase()}${substring(1)}';
   }

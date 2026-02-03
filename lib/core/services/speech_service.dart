@@ -167,7 +167,7 @@ class SpeechService {
     }
   }
 
-  List<LocaleName> get availableLocales => _speechToText.locales();
+  Future<List<LocaleName>> getAvailableLocales() => _speechToText.locales();
 
   void dispose() {
     _speechToText.cancel();
