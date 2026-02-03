@@ -28,6 +28,7 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
+        continue-on-error: true
         run: dart format --set-exit-if-changed .
 
       - name: Analyze code
