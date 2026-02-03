@@ -1,8 +1,5 @@
 import 'dart:math';
 import '../../shared/models/reflection.dart';
-import '../errors/app_exception.dart';
-import '../logging/app_logger.dart';
-import '../utils/result.dart';
 
 /// On-device sentiment analysis service
 /// Uses rule-based analysis with keyword matching for privacy
@@ -10,8 +7,6 @@ import '../utils/result.dart';
 class SentimentService {
   SentimentService._();
   static final SentimentService instance = SentimentService._();
-
-  static const String _tag = 'SentimentService';
 
   // Positive keywords with weights
   static const Map<String, double> _positiveWords = {
@@ -63,121 +58,75 @@ class SentimentService {
     'highly': 1.4, 'deeply': 1.5, 'truly': 1.4, 'quite': 1.2,
   };
 
-  /// Analyze text and return sentiment data wrapped in Result
-  /// 
-  /// Returns [Success<SentimentData>] on successful analysis
-  /// Returns [Failure] with [AnalysisException] on error
-  Future<Result<SentimentData>> analyze(String text) async {
-    logDebug('Starting sentiment analysis', tag: _tag, context: {
-      'textLength': text.length,
-    });
-
-    // Validate input
+  Future<SentimentData> analyze(String text) async {
     if (text.trim().isEmpty) {
-      logWarning('Empty text provided for analysis', tag: _tag);
-      return Failure(AnalysisException.emptyInput());
+      return _getDefaultSentiment();
     }
 
-    try {
-      final lowerText = text.toLowerCase();
-      final words = _tokenize(lowerText);
-      
-      // Calculate sentiment score
-      double score = 0.0;
-      int sentimentWordCount = 0;
-      final keywords = <String>[];
+    final lowerText = text.toLowerCase();
+    final words = _tokenize(lowerText);
+    
+    // Calculate sentiment score
+    double score = 0.0;
+    int sentimentWordCount = 0;
+    final keywords = <String>[];
 
-      for (int i = 0; i < words.length; i++) {
-        final word = words[i];
-        double wordScore = 0.0;
+    for (int i = 0; i < words.length; i++) {
+      final word = words[i];
+      double wordScore = 0.0;
 
-        // Check positive words
-        if (_positiveWords.containsKey(word)) {
-          wordScore = _positiveWords[word]!;
-          keywords.add(word);
-        }
-        // Check negative words
-        else if (_negativeWords.containsKey(word)) {
-          wordScore = _negativeWords[word]!;
-          keywords.add(word);
-        }
-
-        if (wordScore != 0.0) {
-          // Check for negation in previous words
-          if (_hasNegationBefore(words, i)) {
-            wordScore = -wordScore * 0.8; // Flip and slightly reduce
-          }
-
-          // Check for intensifiers
-          final intensifier = _getIntensifierBefore(words, i);
-          if (intensifier > 1.0) {
-            wordScore *= intensifier;
-          }
-
-          score += wordScore;
-          sentimentWordCount++;
-        }
+      // Check positive words
+      if (_positiveWords.containsKey(word)) {
+        wordScore = _positiveWords[word]!;
+        keywords.add(word);
+      }
+      // Check negative words
+      else if (_negativeWords.containsKey(word)) {
+        wordScore = _negativeWords[word]!;
+        keywords.add(word);
       }
 
-      // Normalize score to -1.0 to 1.0 range
-      if (sentimentWordCount > 0) {
-        score = score / sentimentWordCount;
-        score = score.clamp(-1.0, 1.0);
+      if (wordScore != 0.0) {
+        // Check for negation in previous words
+        if (_hasNegationBefore(words, i)) {
+          wordScore = -wordScore * 0.8; // Flip and slightly reduce
+        }
+
+        // Check for intensifiers
+        final intensifier = _getIntensifierBefore(words, i);
+        if (intensifier > 1.0) {
+          wordScore *= intensifier;
+        }
+
+        score += wordScore;
+        sentimentWordCount++;
       }
-
-      // Extract themes
-      final themes = _extractThemes(lowerText);
-
-      // Determine sentiment label
-      String sentiment;
-      if (score > 0.2) {
-        sentiment = 'positive';
-      } else if (score < -0.2) {
-        sentiment = 'negative';
-      } else {
-        sentiment = 'neutral';
-      }
-
-      final result = SentimentData(
-        sentiment: sentiment,
-        score: score,
-        keywords: keywords.take(10).toList(),
-        themes: themes,
-      );
-
-      logInfo('Sentiment analysis completed', tag: _tag, context: {
-        'sentiment': sentiment,
-        'score': score,
-        'keywordCount': keywords.length,
-        'themeCount': themes.length,
-      });
-
-      return Success(result);
-    } catch (e, stackTrace) {
-      logError(
-        'Sentiment analysis failed',
-        tag: _tag,
-        error: e,
-        stackTrace: stackTrace,
-        context: {'textLength': text.length},
-      );
-      return Failure(AnalysisException(
-        'Sentiment analysis failed: $e',
-        code: 'ANALYSIS_FAILED',
-        originalError: e,
-        stackTrace: stackTrace,
-      ));
     }
-  }
 
-  /// Legacy method for backward compatibility
-  /// Prefer using [analyze] which returns Result<SentimentData>
-  @Deprecated('Use analyze() with Result type instead')
-  Future<SentimentData> analyzeUnsafe(String text) async {
-    final result = await analyze(text);
-    return result.fold(
-      onSuccess: (data) => data,
-      onFailure: (_) => _getDefaultSentiment(),
+    // Normalize score to -1.0 to 1.0 range
+    if (sentimentWordCount > 0) {
+      score = score / sentimentWordCount;
+      score = score.clamp(-1.0, 1.0);
+    }
+
+    // Extract themes
+    final themes = _extractThemes(lowerText);
+
+    // Determine sentiment label
+    String sentiment;
+    if (score > 0.2) {
+      sentiment = 'positive';
+    } else if (score < -0.2) {
+      sentiment = 'negative';
+    } else {
+      sentiment = 'neutral';
+    }
+
+    return SentimentData(
+      sentiment: sentiment,
+      score: score,
+      keywords: keywords.take(10).toList(),
+      themes: themes,
     );
   }
 
@@ -239,70 +188,46 @@ class SentimentService {
   }
 
   /// Combine emotion and sentiment data into a unified mood analysis
-  /// Returns Result with combined analysis or failure
-  Result<Map<String, dynamic>> combinedAnalysis({
+  Map<String, dynamic> combinedAnalysis({
     EmotionData? emotionData,
     SentimentData? sentimentData,
   }) {
-    logDebug('Combining emotion and sentiment data', tag: _tag);
+    String dominantMood = 'neutral';
+    double confidence = 0.5;
 
-    try {
-      String dominantMood = 'neutral';
-      double confidence = 0.5;
+    if (emotionData != null && sentimentData != null) {
+      // Weight: 40% emotion, 60% sentiment (text is usually more expressive)
+      final emotionWeight = 0.4;
+      final sentimentWeight = 0.6;
 
-      if (emotionData != null && sentimentData != null) {
-        // Weight: 40% emotion, 60% sentiment (text is usually more expressive)
-        const emotionWeight = 0.4;
-        const sentimentWeight = 0.6;
+      // Map emotion to numeric score
+      final emotionScore = _emotionToScore(emotionData.dominantEmotion);
+      final combinedScore = (emotionScore * emotionWeight) +
+          (sentimentData.score * sentimentWeight);
 
-        // Map emotion to numeric score
-        final emotionScore = _emotionToScore(emotionData.dominantEmotion);
-        final combinedScore = (emotionScore * emotionWeight) +
-            (sentimentData.score * sentimentWeight);
-
-        if (combinedScore > 0.3) {
-          dominantMood = 'positive';
-        } else if (combinedScore < -0.3) {
-          dominantMood = 'negative';
-        } else {
-          dominantMood = 'neutral';
-        }
-
-        confidence = (emotionData.confidence + (1 - sentimentData.score.abs())) / 2;
-      } else if (emotionData != null) {
-        dominantMood = _emotionToMood(emotionData.dominantEmotion);
-        confidence = emotionData.confidence;
-      } else if (sentimentData != null) {
-        dominantMood = sentimentData.sentiment;
-        confidence = sentimentData.score.abs();
+      if (combinedScore > 0.3) {
+        dominantMood = 'positive';
+      } else if (combinedScore < -0.3) {
+        dominantMood = 'negative';
+      } else {
+        dominantMood = 'neutral';
       }
 
-      final result = {
-        'dominantMood': dominantMood,
-        'confidence': confidence,
-        'emotionData': emotionData,
-        'sentimentData': sentimentData,
-      };
-
-      logInfo('Combined analysis completed', tag: _tag, context: {
-        'dominantMood': dominantMood,
-        'confidence': confidence,
-      });
-
-      return Success(result);
-    } catch (e, stackTrace) {
-      logError(
-        'Combined analysis failed',
-        tag: _tag,
-        error: e,
-        stackTrace: stackTrace,
-      );
-      return Failure(AnalysisException(
-        'Combined analysis failed: $e',
-        originalError: e,
-        stackTrace: stackTrace,
-      ));
+      confidence = (emotionData.confidence + (1 - sentimentData.score.abs())) / 2;
+    } else if (emotionData != null) {
+      dominantMood = _emotionToMood(emotionData.dominantEmotion);
+      confidence = emotionData.confidence;
+    } else if (sentimentData != null) {
+      dominantMood = sentimentData.sentiment;
+      confidence = sentimentData.score.abs();
     }
+
+    return {
+      'dominantMood': dominantMood,
+      'confidence': confidence,
+      'emotionData': emotionData,
+      'sentimentData': sentimentData,
+    };
   }
 
   double _emotionToScore(String emotion) {
@@ -311,11 +236,11 @@ class SentimentService {
       case 'surprised':
         return 0.8;
       case 'sad':
-      case 'angry':
+      case 'fearful':
         return -0.8;
-      case 'anxious':
-        return -0.5;
-      case 'neutral':
+      case 'angry':
+      case 'disgusted':
+        return -0.6;
       default:
         return 0.0;
     }
@@ -327,10 +252,10 @@ class SentimentService {
       case 'surprised':
         return 'positive';
       case 'sad':
+      case 'fearful':
       case 'angry':
-      case 'anxious':
+      case 'disgusted':
         return 'negative';
-      case 'neutral':
       default:
         return 'neutral';
     }
